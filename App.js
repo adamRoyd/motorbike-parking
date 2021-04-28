@@ -1,9 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useDebugValue, useEffect, useState } from 'react';
 import { StyleSheet, Text, View, Dimensions, TextInput, Image } from 'react-native';
 import MapView, { Marker, Callout, CalloutSubview } from 'react-native-maps';
 import CustomCallout from './CustomCallout';
 import Card from './components/Card';
+import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get("window");
 const CARD_HEIGHT = 220;
@@ -12,6 +13,7 @@ const CARD_WIDTH = width - 20;
 export default function App() {
 
   const [isCardVisible, setCardVisibility] = useState(false);
+  const [location, setLocation] = useState(null);
 
   const [region, setRegion] = useState({
     latitude: 50.8289,
@@ -20,9 +22,34 @@ export default function App() {
     longitudeDelta: 0.006
   });
 
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({accuracy: 6});
+      setLocation(location);
+      setRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.006,
+        longitudeDelta: 0.006
+      })
+    })();
+  }, []);
+
   const onMarkerPress = (mapEventData) => {
     const markerID = mapEventData._targetInst.return.key;
+    console.log('on marker press markerId', mapEventData);
     setCardVisibility(true);
+  }
+
+  const onMapPress = (e) => {
+    console.log('on map press', e.nativeEvent.coordinate);
+    setCardVisibility(false);
   }
 
   return (
@@ -30,7 +57,8 @@ export default function App() {
       <MapView
         style={styles.map}
         region={region}
-        onRegionChangeComplete={region => setRegion(region)}>
+        onRegionChangeComplete={region => setRegion(region)}
+        onPress={(e) => onMapPress(e)}>
         <Marker
           coordinate={{ latitude: 50.8289, longitude: -0.1400 }}
           calloutOffset={{ x: -8, y: 28 }}
